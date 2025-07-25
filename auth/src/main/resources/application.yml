@@ -25,3 +25,26 @@ logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql: TRACE
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  metrics:
+    tags:
+      application: auth-service
+
+otel:
+  exporter:
+    otlp:
+      endpoint: http://localhost:4317
+      protocol: grpc
+  resource:
+    attributes:
+      service.name: auth-service
+      service.namespace: levo-mart
+      deployment.environment: dev
+  traces:
+    sampler:
+      probability: 1.0 # 100% sampling for dev (reduce in prod)
