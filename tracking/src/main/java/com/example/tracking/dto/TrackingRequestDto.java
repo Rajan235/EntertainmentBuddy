@@ -6,10 +6,14 @@ import com.example.tracking.models.Category;
 import com.example.tracking.models.ProgressStatus;
 
 import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class TrackingRequestDto {
 
     @NotBlank(message = "Title is required")

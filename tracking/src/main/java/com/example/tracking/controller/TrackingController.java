@@ -2,11 +2,13 @@ package com.example.tracking.controller;
 
 import java.util.List;
 import java.util.UUID;
+import com.example.tracking.models.Category;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.tracking.dto.TrackingRequestDto;
 import com.example.tracking.dto.TrackingResponseDto;
+import com.example.tracking.models.ProgressStatus;
 import com.example.tracking.services.UserProgressService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -80,6 +83,40 @@ public class TrackingController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/category/{category}")
+    @Operation(summary = "Get all tracking entries for the authenticated user filtered by category")
+    public ResponseEntity<List<TrackingResponseDto>> getEntriesByCategory(@PathVariable Category category) {
+        UUID userId = getCurrentUserId();
+        List<TrackingResponseDto> entries = userProgressService.getAllByCategory(userId, category);
+        return ResponseEntity.ok(entries);
+    }
+
+    @GetMapping("/category/{category}/status/{status}")
+@Operation(summary = "Get all tracking entries of a category and status for authenticated user")
+public ResponseEntity<List<TrackingResponseDto>> getByCategoryAndStatus(
+        @PathVariable Category category,
+        @PathVariable ProgressStatus status) {
+    UUID userId = getCurrentUserId();
+    List<TrackingResponseDto> entries = userProgressService.getByStatus(userId, category, status);
+    return ResponseEntity.ok(entries);
+}
+    @GetMapping("/status/{status}")
+    @Operation(summary = "Get all tracking entries for the authenticated user filtered by status")
+    public ResponseEntity<List<TrackingResponseDto>> getEntriesByStatus(@PathVariable ProgressStatus status) {
+        UUID userId = getCurrentUserId();
+        List<TrackingResponseDto> entries = userProgressService.getAllByStatus(userId, status);
+        return ResponseEntity.ok(entries);
+    }
+    @PatchMapping("/{id}")
+    @Operation(summary = "Partially update an existing tracking entry by ID")
+    public ResponseEntity<TrackingResponseDto> patchEntry(
+            @PathVariable UUID id,
+            @RequestBody TrackingRequestDto requestDto) {
+
+        UUID userId = getCurrentUserId();
+        TrackingResponseDto updated = userProgressService.patchEntry(userId, id, requestDto);
+        return ResponseEntity.ok(updated);
+    }
 
 
     

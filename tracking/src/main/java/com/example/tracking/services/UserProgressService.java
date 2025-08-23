@@ -76,6 +76,34 @@ public class UserProgressService {
         return TrackingResponseDto.from(entry);
     }
 
+    @Transactional
+public TrackingResponseDto patchEntry(UUID userId, UUID entryId, TrackingRequestDto request) {
+    TrackingEntry entry = userProgressRepository.findByIdAndUserId(entryId, userId)
+            .orElseThrow(() -> new RuntimeException("Entry not found"));
+
+    // Update only non-null fields from request DTO
+    if (request.getStatus() != null) {
+        entry.setStatus(request.getStatus());
+    }
+    if (request.getRating() != null) {
+        entry.setRating(request.getRating());
+    }
+    if (request.getNotes() != null) {
+        entry.setNotes(request.getNotes());
+    }
+    if (request.getTitle() != null) {
+        entry.setTitle(request.getTitle());
+    }
+    if (request.getCategory() != null) {
+        entry.setCategory(request.getCategory());
+    }
+
+    // Save the updated entry
+    TrackingEntry saved = userProgressRepository.save(entry);
+
+    return TrackingResponseDto.from(saved);
+}
+
     public long countByStatus(UUID userId, Category category, ProgressStatus status) {
         return userProgressRepository.countByUserIdAndCategoryAndStatus(userId, category, status);
     }
