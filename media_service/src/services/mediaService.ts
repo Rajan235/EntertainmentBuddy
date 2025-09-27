@@ -2,8 +2,10 @@
 
 import redisClient from "../config/redisClient";
 import { AggregatedMediaDetail, MediaType, SearchResult } from "../types/media";
-import { fetchMovieDetails } from "../clients/tmdbClient";
-import { fetchAnimeDetails } from "../clients/animeClient";
+import * as tmdbClient from "../clients/tmdbClient";
+import * as animeClient from "../clients/animeClient";
+import * as bookClient from "../clients/bookClient";
+import * as musicClient from "../clients/musicClient";
 // ... import other fetch functions
 
 // TTL for cached media data (e.g., 24 hours)
@@ -31,12 +33,22 @@ export async function getAggregatedDetails(
     switch (mediaType) {
       case "MOVIE":
       case "SERIES":
-        cleanAggregatedData = await fetchMovieDetails(id); // Use TMDB for both
+        cleanAggregatedData = await tmdbClient.fetchMovieDetails(id);
         break;
       case "ANIME":
-        cleanAggregatedData = await fetchAnimeDetails(id);
+        cleanAggregatedData = await animeClient.fetchAnimeDetails(id);
         break;
-      // ... Add cases for GAME, BOOK, MUSIC
+      case "BOOK":
+        cleanAggregatedData = await bookClient.fetchBookDetails(id);
+        break;
+      case "MUSIC":
+        // Music often uses composite IDs; the client handles resolving the API call.
+        const [track, artist] = id.split("||"); // Example key format
+        cleanAggregatedData = await musicClient.fetchMusicDetails(
+          track,
+          artist
+        );
+        break;
       default:
         throw new Error(`Unsupported media type: ${mediaType}`);
     }
@@ -56,7 +68,7 @@ export async function getAggregatedDetails(
 }
 
 export async function searchMedia(query: string): Promise<SearchResult[]> {
-  // Implement complex search logic here (e.g., search TMDB, Jikan, etc. and combine results)
-  // Caching search results is also highly recommended!
-  return []; // Placeholder
+  // Note: Search results should have a much shorter TTL (e.g., 5-30 mins)
+  // Complex search logic involving parallel calls to multiple clients goes here.
+  return [];
 }
