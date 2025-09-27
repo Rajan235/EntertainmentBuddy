@@ -16,7 +16,7 @@ dist
 *.war
 .idea/
 .vscode/
-
+keys/*
 # ----------------------------------------
 # Project-Specific Key Exclusion
 # ----------------------------------------
