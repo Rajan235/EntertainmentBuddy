@@ -23,7 +23,7 @@ keys/*
 
 # IGNORE ALL private keys and source resource public keys
 # This targets the auth/src/main/resources/keys folder
-auth/src/main/resources/keys/
+auth/src/main/resources/keys/*
 
 # EXCEPTION: Re-include the specific folder needed for the JwksController
 # This ensures static/keys/public.pem is still tracked if it exists
