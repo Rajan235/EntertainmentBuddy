@@ -1,11 +1,14 @@
 package com.example.auth.service;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.example.auth.model.User;
 import com.example.auth.model.UserPrincipal;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,6 +23,7 @@ import java.util.*;
 
 @Service
 @AllArgsConstructor
+@RequiredArgsConstructor
 public class JwtService {
 
     private final String PRIVATE_KEY_PATH = "keys/private.pem";
@@ -27,10 +31,23 @@ public class JwtService {
     private static final long EXPIRATION_MS = 1000 * 60 * 60 * 10; // 10 hours
     private PrivateKey privateKey;
     private PublicKey publicKey;
+    private String keyId;
+
     @PostConstruct
     public void initKeys() throws Exception {
-        this.privateKey = getPrivateKey();
-        this.publicKey = getPublicKey();
+        // Correct initialization: load keys before setting fields
+        this.privateKey = loadPrivateKey(); // Use a descriptive name like loadPrivateKey()
+        this.publicKey = loadPublicKey();   // Use a descriptive name like loadPublicKey()
+        this.keyId = new com.nimbusds.jose.jwk.RSAKey.Builder((java.security.interfaces.RSAPublicKey) publicKey).build().computeThumbprint().toString();
+    }
+    // The public accessor for JwtService.getPublicKey() that JwksController uses
+    public PublicKey getPublicKey() {
+        return publicKey; 
+    }
+
+    // The private accessor for JwtService.getPrivateKey() that generateToken uses
+    private PrivateKey getPrivateKey() {
+        return privateKey; 
     }
 
      public String generateToken(UserDetails userDetails) {
@@ -45,6 +62,7 @@ public class JwtService {
 
         return Jwts.builder()
                 .setClaims(claims)
+                .setHeaderParam("kid", keyId)
                 .setSubject(userDetails.getUsername())
                 .setIssuer("watchbuddy-auth")
                 .setId(UUID.randomUUID().toString())
@@ -52,6 +70,10 @@ public class JwtService {
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_MS))
                 .signWith(privateKey, SignatureAlgorithm.RS256)
                 .compact();
+    }
+
+    public String getKeyId() {
+        return keyId;
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
@@ -88,34 +110,37 @@ public class JwtService {
     // 🔑 Key loading
     // -----------------------
 
-    @SneakyThrows
-    private PrivateKey getPrivateKey() {
-        InputStream inputStream = new ClassPathResource(PRIVATE_KEY_PATH).getInputStream();
-        String key = new String(inputStream.readAllBytes())
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s+", "");
+    // @SneakyThrows is generally discouraged, consider throwing checked exceptions or handling
+    private PrivateKey loadPrivateKey() throws Exception {
+         // UNCOMMENT or reimplement the original key loading logic here
+         InputStream inputStream = new ClassPathResource(PRIVATE_KEY_PATH).getInputStream();
+         String key = new String(inputStream.readAllBytes())
+                 .replace("-----BEGIN PRIVATE KEY-----", "")
+                 .replace("-----END PRIVATE KEY-----", "")
+                 .replaceAll("\\s+", "");
 
-        byte[] keyBytes = Base64.getDecoder().decode(key);
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-        KeyFactory factory = KeyFactory.getInstance("RSA");
-        return factory.generatePrivate(spec);
+         byte[] keyBytes = Base64.getDecoder().decode(key);
+         PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+         KeyFactory factory = KeyFactory.getInstance("RSA");
+         return factory.generatePrivate(spec);
     }
 
-    @SneakyThrows
-    private PublicKey getPublicKey() {
-        InputStream inputStream = new ClassPathResource(PUBLIC_KEY_PATH).getInputStream();
-        String key = new String(inputStream.readAllBytes())
-                .replace("-----BEGIN PUBLIC KEY-----", "")
-                .replace("-----END PUBLIC KEY-----", "")
-                .replaceAll("\\s+", "");
+    private PublicKey loadPublicKey() throws Exception {
+         // UNCOMMENT or reimplement the original key loading logic here
+         InputStream inputStream = new ClassPathResource(PUBLIC_KEY_PATH).getInputStream();
+         String key = new String(inputStream.readAllBytes())
+                 .replace("-----BEGIN PUBLIC KEY-----", "")
+                 .replace("-----END PUBLIC KEY-----", "")
+                 .replaceAll("\\s+", "");
 
-        byte[] keyBytes = Base64.getDecoder().decode(key);
-        X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
-        KeyFactory factory = KeyFactory.getInstance("RSA");
-        return factory.generatePublic(spec);
+         byte[] keyBytes = Base64.getDecoder().decode(key);
+         X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+         KeyFactory factory = KeyFactory.getInstance("RSA");
+         return factory.generatePublic(spec);
     }
+   
 
+    
 
 
 

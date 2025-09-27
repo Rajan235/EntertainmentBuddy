@@ -6,6 +6,7 @@ import com.example.tracking.models.TrackingEntry;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface UserProgressRepository extends JpaRepository<
@@ -16,7 +17,11 @@ public interface UserProgressRepository extends JpaRepository<
     List<TrackingEntry> findByStatus(ProgressStatus status);
     List<TrackingEntry> findByUserIdAndCategory(UUID userId, Category category);
     List<TrackingEntry> findByUserIdAndCategoryAndStatus(UUID userId, Category category, ProgressStatus status);
-    List<TrackingEntry> findByIdAndUserId(UUID entryId, UUID userId);
+    Optional<TrackingEntry> findByIdAndUserId(UUID entryId, UUID userId);
     long countByUserIdAndCategoryAndStatus(UUID userId, Category category, ProgressStatus status);
+    
+    
+
+   
 
 }

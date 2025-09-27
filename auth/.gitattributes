@@ -1,2 +1,12 @@
-/mvnw text eol=lf
-*.cmd text eol=crlf
+# auth/.gitattributes
+
+# Set preferred line endings for Spring/Java source files
+*.java text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+*.properties text eol=lf
+
+# CRITICAL: Treat PEM key files as binary to prevent CRLF/LF corruption
+# This ensures the Base64 content is preserved exactly as written.
+src/main/resources/keys/*.pem binary
+src/main/resources/static/keys/*.pem binary

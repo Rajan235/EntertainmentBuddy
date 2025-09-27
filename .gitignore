@@ -1,0 +1,33 @@
+# ----------------------------------------
+# Global Ignore Rules
+# ----------------------------------------
+# Standard Node.js ignores
+node_modules
+dist
+.env
+.DS_Store
+
+# Standard Java/Spring Boot ignores
+/auth/target/
+/tracking/target/
+/recommendation_service/target/
+*.class
+*.jar
+*.war
+.idea/
+.vscode/
+
+# ----------------------------------------
+# Project-Specific Key Exclusion
+# ----------------------------------------
+
+# IGNORE ALL private keys and source resource public keys
+# This targets the auth/src/main/resources/keys folder
+auth/src/main/resources/keys/
+
+# EXCEPTION: Re-include the specific folder needed for the JwksController
+# This ensures static/keys/public.pem is still tracked if it exists
+#!/auth/src/main/resources/static/keys/
+
+# Key files should ONLY be committed if they are in static/keys/ or if the file name is explicit
+# This ensures that ONLY auth/src/main/resources/static/keys/public.pem is available for public consumption.
