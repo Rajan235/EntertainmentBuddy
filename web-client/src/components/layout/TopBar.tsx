@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Search, Bell, User, Menu } from 'lucide-react'
-import Input from '@/components/ui/Input'
-import Button from '@/components/ui/Button'
-import { motion } from 'framer-motion'
+import { useState } from "react";
+import { Search, Bell, User, Menu } from "lucide-react";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { motion } from "framer-motion";
 
 export function TopBar() {
-  const [showSearch, setShowSearch] = useState(false)
+  const [showSearch, setShowSearch] = useState(false);
 
   return (
     <header className="h-16 bg-card border-b border-border px-6 flex items-center justify-between">
@@ -26,7 +26,7 @@ export function TopBar() {
           </div>
         </div>
 
-        <button 
+        <button
           className="md:hidden"
           onClick={() => setShowSearch(!showSearch)}
         >
@@ -49,17 +49,14 @@ export function TopBar() {
 
       {/* Mobile Search Overlay */}
       {showSearch && (
-        <motion.div 
+        <motion.div
           className="md:hidden absolute top-16 left-0 right-0 bg-card border-b border-border p-4 z-50"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Input
-            placeholder="Search..."
-            autoFocus
-          />
+          <Input placeholder="Search..." autoFocus />
         </motion.div>
       )}
     </header>
-  )
+  );
 }

@@ -1,42 +1,42 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { 
-  Home, 
-  List, 
-  Sparkles, 
-  Settings, 
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+  Home,
+  List,
+  Sparkles,
+  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Film,
   Gamepad2,
   BookOpen,
-  Tv
-} from 'lucide-react'
-import { cn } from '@/lib/utils/cn'
-import { useAuth } from '@/hooks/useAuth'
+  Tv,
+} from "lucide-react";
+import { cn } from "@/lib/utils/cn";
+import { useAuth } from "@/hooks/AuthContext";
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false)
-  const pathname = usePathname()
-  const { logout } = useAuth()
+  const [collapsed, setCollapsed] = useState(false);
+  const pathname = usePathname();
+  const { logout } = useAuth();
 
   const navItems = [
-    { href: '/', icon: Home, label: 'Dashboard' },
-    { href: '/lists', icon: List, label: 'My Lists' },
-    { href: '/recommendations', icon: Sparkles, label: 'Recommendations' },
-  ]
+    { href: "/", icon: Home, label: "Dashboard" },
+    { href: "/lists", icon: List, label: "My Lists" },
+    { href: "/recommendations", icon: Sparkles, label: "Recommendations" },
+  ];
 
   const categoryItems = [
-    { href: '/lists?category=movie', icon: Film, label: 'Movies' },
-    { href: '/lists?category=series', icon: Tv, label: 'Series' },
-    { href: '/lists?category=game', icon: Gamepad2, label: 'Games' },
-    { href: '/lists?category=book', icon: BookOpen, label: 'Books' },
-  ]
+    { href: "/lists?category=movie", icon: Film, label: "Movies" },
+    { href: "/lists?category=series", icon: Tv, label: "Series" },
+    { href: "/lists?category=game", icon: Gamepad2, label: "Games" },
+    { href: "/lists?category=book", icon: BookOpen, label: "Books" },
+  ];
 
   return (
     <motion.aside
@@ -62,7 +62,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navItems.map((item) => {
-          const isActive = pathname === item.href
+          const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}
@@ -77,7 +77,7 @@ export function Sidebar() {
               <item.icon className="w-5 h-5 flex-shrink-0" />
               {!collapsed && <span>{item.label}</span>}
             </Link>
-          )
+          );
         })}
 
         {!collapsed && (
@@ -103,13 +103,11 @@ export function Sidebar() {
 
       {/* Bottom Actions */}
       <div className="p-4 border-t border-border space-y-2">
-        <button
-          className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-card-hover text-muted-foreground hover:text-foreground w-full"
-        >
+        <button className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-card-hover text-muted-foreground hover:text-foreground w-full">
           <Settings className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span>Settings</span>}
         </button>
-        
+
         <button
           onClick={logout}
           className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-red-500/20 text-muted-foreground hover:text-red-500 w-full"
@@ -130,5 +128,5 @@ export function Sidebar() {
         </button>
       </div>
     </motion.aside>
-  )
+  );
 }
