@@ -6,6 +6,7 @@
 @layer base {
   :root {
     --radius: 0.5rem;
+    /* Light theme (default) */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -38,6 +39,50 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    --highlight: 45 100% 50%;
+    --highlight-foreground: 0 0% 7%;
+  }
+
+  /* Dark theme - using :root.dark for higher specificity */
+  :root.dark,
+  .dark {
+    --background: 0 0% 7%; /* #121212 */
+    --foreground: 210 40% 98%;
+    --card: 0 0% 10%; /* #1A1A1A */
+    --card-foreground: 210 40% 98%;
+    --card-hover: 0 0% 13%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 181 100% 41%; /* #00CED1 */
+    --primary-foreground: 0 0% 7%;
+    --highlight: 45 100% 50%; /* #FFC300 */
+    --highlight-foreground: 0 0% 7%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 181 100% 41%;
+    --chart-1: 181 100% 41%;
+    --chart-2: 45 100% 50%;
+    --chart-3: 0 84% 60%;
+    --chart-4: 120 61% 50%;
+    --chart-5: 270 95% 75%;
+    --sidebar-background: 0 0% 7%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 181 100% 41%;
+    --sidebar-primary-foreground: 0 0% 7%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 181 100% 41%;
+
+    color-scheme: dark;
   }
 
   * {
@@ -50,60 +95,30 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-  }
-  .dark {
-    /* Your custom dark theme */
-    --background: 0 0% 7%; /* #121212 */
-    --foreground: 210 40% 98%;
-
-    --card: 0 0% 10%; /* #1A1A1A */
-    --card-foreground: 210 40% 98%;
-    --card-hover: 0 0% 13%;
-
-    --popover: 0 0% 7%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 181 100% 41%; /* #00CED1 */
-    --primary-foreground: 240 100% 10%; /* Dark text for teal */
-
-    --highlight: 45 100% 50%; /* #FFC300 */
-    --highlight-foreground: 45 100% 15%; /* Dark text for gold */
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 84% 60%; /* #EF4444 */
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    font-family: "Inter", sans-serif;
   }
 }
 
 @layer utilities {
   .glass {
-    @apply border border-white/10 bg-card/50 backdrop-blur-lg;
+    background: rgba(26, 26, 26, 0.7) !important;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .glow {
-    @apply shadow-[0_0_20px_rgba(139,92,246,0.35)];
+    @apply shadow-[0_0_20px_rgba(0,206,209,0.35)];
   }
 
   .text-gradient {
-    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+    background: linear-gradient(135deg, #00ced1 0%, #ffc300 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .primary-light {
+    color: hsl(181 100% 60%);
   }
 
   .shimmer {
@@ -113,21 +128,39 @@
   .card-hover {
     @apply transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/20;
   }
+
+  .status-completed {
+    @apply bg-highlight text-highlight-foreground;
+  }
+
+  .status-in-progress {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  .status-planned {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  .status-dropped {
+    @apply bg-destructive text-destructive-foreground;
+  }
 }
 
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-background;
+  background: #121212;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted rounded-full;
+  background: rgba(0, 206, 209, 0.3);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground;
+  background: rgba(0, 206, 209, 0.5);
 }

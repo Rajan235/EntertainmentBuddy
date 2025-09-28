@@ -21,6 +21,10 @@ const config: Config = {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
@@ -44,14 +48,7 @@ const config: Config = {
           foreground: "hsl(var(--destructive-foreground))",
         },
         input: "hsl(var(--input))",
-        // It seems you have a separate set of colors for the app itself.
-        // It's better to integrate them into the HSL-based system for consistency
-        // if you are using CSS variables in your global.css.
-        // For example, in your CSS:
-        // --background: 0 0% 7%; /* #121212 */
-        // --card: 0 0% 10%; /* #1A1A1A */
-        // --primary: 181 100% 41%; /* #00CED1 */
-        // --highlight: 45 100% 50%; /* #FFC300 */
+        // Status colors for your app
         "status-completed": "hsl(var(--highlight))", // Gold
         "status-in-progress": "hsl(var(--primary))", // Teal
         "status-planned": "hsl(var(--muted))", // Gray
@@ -63,8 +60,6 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
-        // The sidebar colors can be aliased to the main colors if they are the same
-        // or defined with their own CSS variables.
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -111,11 +106,11 @@ const config: Config = {
         },
         glow: {
           "0%": {
-            boxShadow: "0 0 20px rgba(139, 92, 246, 0.5)",
+            boxShadow: "0 0 20px rgba(0, 206, 209, 0.5)", // Your teal color
           },
           "100%": {
             boxShadow:
-              "0 0 30px rgba(139, 92, 246, 0.8), 0 0 60px rgba(139, 92, 246, 0.4)",
+              "0 0 30px rgba(0, 206, 209, 0.8), 0 0 60px rgba(0, 206, 209, 0.4)",
           },
         },
       },
@@ -124,8 +119,12 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
 };
+
 export default config;
