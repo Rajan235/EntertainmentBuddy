@@ -25,7 +25,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
-  const { register: registerUser, isLoading, error } = useAuth();
+  const { register: registerUser, isRegistering, registerError } = useAuth();
 
   const {
     register,
@@ -47,6 +47,7 @@ export function RegisterForm() {
           <Input
             {...register("username")}
             placeholder="Username"
+            disabled={isRegistering}
             className={`pl-10 ${errors.username ? "border-red-500" : ""}`}
           />
         </div>
@@ -62,6 +63,7 @@ export function RegisterForm() {
             {...register("email")}
             type="email"
             placeholder="Email address"
+            disabled={isRegistering}
             className={`pl-10 ${errors.email ? "border-red-500" : ""}`}
           />
         </div>
@@ -76,12 +78,14 @@ export function RegisterForm() {
           <Input
             {...register("password")}
             type={showPassword ? "text" : "password"}
+            disabled={isRegistering}
             placeholder="Password"
             className={`pl-10 pr-10 ${errors.password ? "border-red-500" : ""}`}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
+            disabled={isRegistering}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             {showPassword ? (
@@ -102,6 +106,7 @@ export function RegisterForm() {
           <Input
             {...register("confirmPassword")}
             type={showPassword ? "text" : "password"}
+            disabled={isRegistering}
             placeholder="Confirm Password"
             className={`pl-10 ${
               errors.confirmPassword ? "border-red-500" : ""
@@ -115,15 +120,15 @@ export function RegisterForm() {
         )}
       </div>
 
-      {error && (
+      {registerError && (
         <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
-          {error.message || "An error occurred during registration"}
+          {registerError.message || "An error occurred during registration"}
         </div>
       )}
 
       <div className="pt-2">
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading && (
+        <Button type="submit" className="w-full" disabled={isRegistering}>
+          {isRegistering && (
             <svg
               className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
               xmlns="http://www.w3.org/2000/svg"

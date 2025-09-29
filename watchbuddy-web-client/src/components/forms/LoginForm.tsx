@@ -19,7 +19,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoggingIn, loginError } = useAuth();
   const router = useRouter();
 
   const {
@@ -30,13 +30,8 @@ export function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: LoginFormData) => {
-    try {
-      await login(data);
-      router.push("/dashboard");
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
+  const onSubmit = (data: LoginFormData) => {
+    login(data);
   };
 
   return (
@@ -54,7 +49,7 @@ export function LoginForm() {
             type="email"
             placeholder="Enter your email"
             className="pl-10 h-12 bg-input/50 border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/40 transition-all duration-200"
-            disabled={isLoading}
+            disabled={isLoggingIn}
           />
         </div>
         {errors.email && (
@@ -81,13 +76,13 @@ export function LoginForm() {
             type={showPassword ? "text" : "password"}
             placeholder="Enter your password"
             className="pl-10 pr-12 h-12 bg-input/50 border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/40 transition-all duration-200"
-            disabled={isLoading}
+            disabled={isLoggingIn}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted/20"
-            disabled={isLoading}
+            disabled={isLoggingIn}
           >
             {showPassword ? (
               <EyeOff className="w-5 h-5" />
@@ -105,12 +100,12 @@ export function LoginForm() {
       </div>
 
       {/* Error Display */}
-      {error && (
+      {loginError && (
         <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm flex items-start gap-2">
           <span className="w-5 h-5 mt-0.5">⚠</span>
           <div>
             <p className="font-medium">Login Failed</p>
-            <p>{error.message || "An error occurred during login"}</p>
+            <p>{loginError.message || "An error occurred during login"}</p>
           </div>
         </div>
       )}
@@ -119,9 +114,9 @@ export function LoginForm() {
       <Button
         type="submit"
         className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90 focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background transition-all duration-200 shadow-lg hover:shadow-primary/25"
-        disabled={isLoading}
+        disabled={isLoggingIn}
       >
-        {isLoading ? (
+        {isLoggingIn ? (
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
             Signing in...

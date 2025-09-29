@@ -77,3 +77,17 @@ export const logoutClient = async (): Promise<void> => {
     console.error("Logout request failed:", error);
   }
 };
+
+/**
+ * Checks for an active session by calling the server.
+ * The server will check for a valid HttpOnly cookie.
+ * @returns The user data if the session is valid, otherwise null.
+ */
+export const getSessionClient = async (): Promise<User | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/session`);
+    return await handleResponse<User>(response);
+  } catch (error) {
+    return null; // Return null if not authenticated (e.g., 401 error)
+  }
+};

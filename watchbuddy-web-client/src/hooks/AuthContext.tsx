@@ -1,101 +1,103 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   loginClient,
   registerClient,
   logoutClient,
   AuthError,
+  getSessionClient as getSession,
 } from "@/lib/auth/client"; // Will create this next
 import { LoginData, RegisterData, User } from "@/types/api.types"; // Assuming these types exist
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
-  error: AuthError | null;
-  login: (data: LoginData) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (data: LoginData) => void;
+  register: (data: RegisterData) => void;
   logout: () => void;
+  isLoggingIn: boolean;
+  loginError: AuthError | null;
+  isRegistering: boolean;
+  registerError: AuthError | null;
+  isSessionLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<AuthError | null>(null);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  // --- 1. INITIAL LOAD: Check session on startup (e.g., validate token) ---
+  // --- 1. Query for the current user session ---
+  // This query will run on mount and whenever we invalidate it.
+  const {
+    data: user,
+    isLoading: isSessionLoading,
+    isError,
+  } = useQuery<User | null, AuthError>({
+    queryKey: ["user"],
+    queryFn: getSession, // API call to /api/auth/session
+    retry: false, // Don't retry on 401/403 errors
+    refetchOnWindowFocus: false, // Optional: set to true to refetch on focus
+  });
+
+  // --- 2. Mutations for auth actions ---
+
+  const onAuthSuccess = (data: User) => {
+    queryClient.setQueryData(["user"], data); // Manually update the 'user' query cache
+    router.push("/dashboard");
+  };
+
+  const {
+    mutate: login,
+    isPending: isLoggingIn,
+    error: loginError,
+  } = useMutation<User, AuthError, LoginData>({
+    mutationFn: loginClient,
+    onSuccess: onAuthSuccess,
+  });
+
+  const {
+    mutate: register,
+    isPending: isRegistering,
+    error: registerError,
+  } = useMutation<User, AuthError, RegisterData>({
+    mutationFn: registerClient,
+    onSuccess: onAuthSuccess,
+  });
+
+  const { mutate: logout } = useMutation({
+    mutationFn: logoutClient,
+    onSuccess: () => {
+      queryClient.setQueryData(["user"], null); // Clear user data
+      router.push("/login");
+    },
+  });
+
+  // If the initial session check results in an error (e.g., invalid cookie),
+  // ensure the user data is cleared from the cache.
   useEffect(() => {
-    // In a real app, you'd call a Next.js API route here to validate the JWT
-    // stored in a secure HttpOnly cookie. For this example, we'll simulate.
-    const checkSession = async () => {
-      // TODO: Implement token validation logic here
-      // This is where you might call an endpoint like /api/auth/session
-
-      // Simulating a successful session check
-      const storedUser = localStorage.getItem("watchbuddy_user");
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-      setIsLoading(false);
-    };
-
-    checkSession();
-  }, []);
-
-  // --- 2. AUTHENTICATION HANDLERS ---
-
-  const login = async (data: LoginData) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const userData = await loginClient(data); // Calls the API client
-      setUser(userData);
-      localStorage.setItem("watchbuddy_user", JSON.stringify(userData)); // Temp storage for user data
-      router.push("/"); // Redirect to dashboard
-    } catch (e) {
-      setError(e as AuthError);
-    } finally {
-      setIsLoading(false);
+    if (isError) {
+      queryClient.setQueryData(["user"], null);
     }
-  };
-
-  const register = async (data: RegisterData) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const userData = await registerClient(data);
-      setUser(userData);
-      localStorage.setItem("watchbuddy_user", JSON.stringify(userData)); // Temp storage for user data
-      router.push("/"); // Redirect to dashboard
-    } catch (e) {
-      setError(e as AuthError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    logoutClient(); // Calls the API client to clear cookies/token
-    setUser(null);
-    localStorage.removeItem("watchbuddy_user");
-    router.push("/login");
-  };
+  }, [isError, queryClient]);
 
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: user ?? null,
         isAuthenticated: !!user,
-        isLoading,
-        error,
         login,
         register,
         logout,
+        isLoggingIn,
+        loginError,
+        isRegistering,
+        registerError,
+        isSessionLoading,
       }}
     >
       {children}
