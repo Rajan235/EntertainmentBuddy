@@ -116,6 +116,10 @@ export function useTracking() {
     };
     fetchData();
   }, []);
+  const allEntries = useMemo(
+    () => [...inProgressEntries, ...plannedEntries, ...completedEntries],
+    [inProgressEntries, plannedEntries, completedEntries]
+  );
 
   const inProgressByCategory = useMemo(() => {
     return inProgressEntries.reduce((acc, entry) => {
@@ -143,5 +147,6 @@ export function useTracking() {
     isLoading,
     inProgressByCategory,
     plannedByCategory,
+    allEntries,
   };
 }

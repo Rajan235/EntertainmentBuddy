@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Progress } from "@/components/ui/progress"; // Corrected import
 import { Star, Clapperboard, Tv, Gamepad2, Book, Sparkles } from "lucide-react";
 import {
   Category,
