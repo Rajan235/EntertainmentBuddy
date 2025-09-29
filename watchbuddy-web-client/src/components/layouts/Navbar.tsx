@@ -7,13 +7,15 @@ import { sidebarItems } from "./nav-data"; // Import shared data
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/AuthContext";
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 md:px-8 bg-background/80 backdrop-blur-sm border-b border-border">
-      {/* Mobile Menu Button */}
+      {/* Mobile Menu Button & Logo */}
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -24,8 +26,8 @@ export function Navbar() {
         >
           <Menu className="w-6 h-6" />
         </Button>
-        <Link href="/dashboard" className="hidden md:block">
-          <h1 className="text-xl font-bold text-gradient">WatchBuddy</h1>
+        <Link href="/dashboard" className="md:hidden">
+          <h1 className="text-xl font-bold text-gradient">W</h1>
         </Link>
       </div>
 
@@ -40,20 +42,17 @@ export function Navbar() {
         </div>
       </div>
 
+      {/* User Profile */}
       <div className="flex items-center gap-2">
-        <button
-          className="p-2 rounded-full hover:bg-accent transition-colors" // Keeping this as a custom styled button for now
-          aria-label="Recommendations"
-        >
-          <Sparkles className="w-5 h-5 text-muted-foreground" />
-        </button>
         <div className="flex items-center gap-3 cursor-pointer p-1 rounded-md hover:bg-accent">
           <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center cursor-pointer">
             <User className="w-5 h-5 text-primary-foreground" />
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-medium text-foreground">Username</p>
-            <p className="text-xs text-muted-foreground">user@email.com</p>
+            <p className="text-sm font-medium text-foreground">
+              {user?.username || "User"}
+            </p>
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>
       </div>

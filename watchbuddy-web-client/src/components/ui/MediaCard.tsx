@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Star, Clapperboard, Tv, Gamepad2 } from "lucide-react";
+import { Star, Clapperboard, Tv, Gamepad2, Book, Sparkles } from "lucide-react";
 import {
   Category,
   ProgressStatus,
@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
 const categoryIcons = {
   [Category.MOVIE]: Clapperboard,
   [Category.SERIES]: Tv,
+  [Category.ANIME]: Sparkles,
   [Category.GAME]: Gamepad2,
+  [Category.BOOK]: Book,
 };
 
 const statusStyles: Record<ProgressStatus, string> = {
@@ -24,6 +26,8 @@ const statusStyles: Record<ProgressStatus, string> = {
     "bg-primary/20 text-primary-foreground/80 border-primary/30",
   [ProgressStatus.PLANNING]:
     "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  [ProgressStatus.DROPPED]: "bg-red-500/20 text-red-400 border-red-500/30",
+  [ProgressStatus.ON_HOLD]: "bg-gray-500/20 text-gray-400 border-gray-500/30",
 };
 
 export default function MediaCard(props: TrackingEntry) {
