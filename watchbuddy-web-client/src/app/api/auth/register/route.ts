@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setAuthCookie } from "@/lib/auth/cookies";
+import axios, { AxiosError } from "axios";
 
 const MICROSERVICE_URL = process.env.MICROSERVICE_API_URL;
 
@@ -7,18 +8,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // 1. Forward the registration request to your microservice
-    const apiRes = await fetch(`${MICROSERVICE_URL}/auth/register`, {
-      method: "POST",
+    // 1. Forward the registration request to your microservice using axios
+    const apiRes = await axios.post(`${MICROSERVICE_URL}/auth/register`, body, {
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
     });
 
-    const data = await apiRes.json();
-
-    if (!apiRes.ok) {
-      return NextResponse.json(data, { status: apiRes.status });
-    }
+    const data = apiRes.data;
 
     // 2. On success, extract token and user data
     const { token, user } = data;
@@ -33,6 +28,18 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (error) {
     console.error("Register API route error:", error);
+
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      // Forward the error from the microservice
+      return NextResponse.json(
+        axiosError.response?.data || {
+          message: "An error occurred during registration.",
+        },
+        { status: axiosError.response?.status || 500 }
+      );
+    }
+
     return NextResponse.json(
       { message: "An internal server error occurred" },
       { status: 500 }

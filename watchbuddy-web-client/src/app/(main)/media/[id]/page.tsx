@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+//import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TrackingForm } from "@/components/forms/TrackingForm";
-import { Category, ProgressStatus } from "@/types/tracking.types";
+//import { Category, ProgressStatus } from "@/types/tracking.types";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/client/client";
+
 import { cn } from "@/lib/utils";
 import { MediaDetails } from "@/types/media.types";
 import { MediaHero } from "@/components/media/MediaHero";
@@ -13,6 +17,7 @@ import { MediaSynopsis } from "@/components/media/MediaSynopsis";
 import { MediaCastAndCrew } from "@/components/media/MediaCastAndCrew";
 import { MediaInformation } from "@/components/media/MediaInformation";
 import { SimilarMedia } from "@/components/media/SimilarMedia";
+import { MediaCardSkeleton as MediaDetailSkeleton } from "@/components/ui/SkeletonLoader";
 import Image from "next/image";
 
 export default function MediaDetailPage({
@@ -22,6 +27,9 @@ export default function MediaDetailPage({
 }) {
   const [showTrackingForm, setShowTrackingForm] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  //const [mediaDetails, setMediaDetails] = useState<MediaDetails | null>(null);
+  //const [isLoading, setIsLoading] = useState(true);
+  //const [error, setError] = useState<string | null>(null);
 
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
@@ -32,30 +40,58 @@ export default function MediaDetailPage({
     }
   });
 
-  // Mock data for a detailed media page, as if fetched from an API like TMDB
-  const mediaDetails: MediaDetails = {
-    id: params.id,
-    title: "Shōgun",
-    category: Category.SERIES,
-    description:
-      "In 1600s Japan, Lord Yoshii Toranaga is fighting for his life as his enemies on the Council of Regents unite against him, when a mysterious European ship is found marooned in a nearby fishing village.",
-    releaseDate: "2024-02-27",
-    posterUrl: "/mock/shogun.jpg",
-    backdropUrl: "/mock/shogun-backdrop.jpg",
-    genres: ["Drama", "History", "War"],
-    rating: 9.2,
-    totalRatings: 15234,
-    totalEpisodes: 10,
-    status: ProgressStatus.COMPLETED, // Use the enum value for type safety
-    creators: ["Rachel Kondo", "Justin Marks"],
-    cast: ["Hiroyuki Sanada", "Cosmo Jarvis", "Anna Sawai"],
-  };
+  /*useEffect(() => {
+    const fetchMediaDetails = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/media/${params.id}`);
+        if (!response.ok) {
+          throw new Error(
+            response.status === 404
+              ? "Media not found"
+              : "Failed to fetch media details"
+          );
+        }
+        const data: MediaDetails = await response.json();
+        setMediaDetails(data);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMediaDetails();
+  }, [params.id]);*/
+  const {
+    data: mediaDetails,
+    isLoading,
+    error,
+  } = useQuery<MediaDetails, Error>({
+    queryKey: ["mediaDetails", params.id],
+    queryFn: () => apiClient<MediaDetails>(`/media/${params.id}`),
+    retry: 1, // Don't retry too many times for a 404
+  });
+
+  if (isLoading) {
+    return <MediaDetailSkeleton />;
+  }
+
+  if (error || !mediaDetails) {
+    return (
+      <div className="text-center py-20 text-destructive">
+        Error:{" "}
+        {error?.message ||
+          "Media details could not be loaded or were not found."}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto">
       <MediaHero
         ref={heroRef}
-        media={mediaDetails}
+        media={mediaDetails} // We know mediaDetails is defined here because of the check above
         onAddToList={() => setShowTrackingForm(true)}
       />
 
@@ -72,7 +108,7 @@ export default function MediaDetailPage({
           <div className="flex items-center gap-4">
             <Image
               src={mediaDetails.posterUrl || "/placeholder-poster.png"}
-              alt={mediaDetails.title}
+              alt={mediaDetails.title} // Safe to access
               width={40}
               height={60}
               className="rounded-md"
