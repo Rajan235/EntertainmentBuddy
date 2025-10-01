@@ -1,10 +1,13 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: auth-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth_db
-    username: auth_user
-    password: auth_pass
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/auth_db}
+    username: ${SPRING_DATASOURCE_USERNAME:auth_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:auth_pass}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -38,13 +41,15 @@ management:
 otel:
   exporter:
     otlp:
-      endpoint: http://localhost:4317
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://tempo:4317}
       protocol: grpc
   resource:
     attributes:
       service.name: auth-service
-      service.namespace: levo-mart
+      service.namespace: watchbuddy
       deployment.environment: dev
+  logs:
+    exporter: none # Disable OTLP log exporter
   traces:
     sampler:
       probability: 1.0 # 100% sampling for dev (reduce in prod)

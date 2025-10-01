@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -82,14 +83,12 @@ public class UserController {
                 String token = jwtService.generateToken(userPrincipal);
                 return ResponseEntity.ok(new AuthResponseDto("Login successful", token));
             }
-
-        } catch (Exception e) {
+            // This part should ideally not be reached if authentication is successful
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new AuthResponseDto("Login failed", null));
+        } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body(new AuthResponseDto("Invalid credentials", null));
         }
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                             .body(new AuthResponseDto("Login failed", null));
     }
 
     @GetMapping("/current-user")

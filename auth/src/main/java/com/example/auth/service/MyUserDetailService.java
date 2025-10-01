@@ -4,6 +4,8 @@ import com.example.auth.model.User;
 import com.example.auth.model.UserPrincipal;
 import com.example.auth.repository.UserRepository;
 
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;

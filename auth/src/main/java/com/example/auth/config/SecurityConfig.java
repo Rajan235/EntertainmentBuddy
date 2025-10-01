@@ -61,7 +61,8 @@ public class SecurityConfig {
                     response.setContentType("application/json");
                     response.getWriter().write("{\"message\":\"Access Denied\"}");
                 })
-            )
+            )    
+        .authenticationProvider(authProvider())
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
 
@@ -75,7 +76,8 @@ public class SecurityConfig {
     	// It is used to authenticate users based on their credentials
     	
     	// Create a DaoAuthenticationProvider instance          
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService); 
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }

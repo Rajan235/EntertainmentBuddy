@@ -1,29 +1,23 @@
 package com.example.auth.service;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.example.auth.model.User;
 import com.example.auth.model.UserPrincipal;
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
+import com.example.auth.model.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.annotation.PostConstruct;
-import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.security.*;
-import java.security.spec.*;
-import java.time.Instant;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 
-
 @Service
-@AllArgsConstructor
-@RequiredArgsConstructor
 public class JwtService {
 
     private final String PRIVATE_KEY_PATH = "keys/private.pem";
@@ -35,22 +29,12 @@ public class JwtService {
 
     @PostConstruct
     public void initKeys() throws Exception {
-        // Correct initialization: load keys before setting fields
-        this.privateKey = loadPrivateKey(); // Use a descriptive name like loadPrivateKey()
-        this.publicKey = loadPublicKey();   // Use a descriptive name like loadPublicKey()
-        this.keyId = new com.nimbusds.jose.jwk.RSAKey.Builder((java.security.interfaces.RSAPublicKey) publicKey).build().computeThumbprint().toString();
-    }
-    // The public accessor for JwtService.getPublicKey() that JwksController uses
-    public PublicKey getPublicKey() {
-        return publicKey; 
+        this.privateKey = loadPrivateKey();
+        this.publicKey = loadPublicKey();
+        this.keyId = new com.nimbusds.jose.jwk.RSAKey.Builder((RSAPublicKey) publicKey).build().computeThumbprint().toString();
     }
 
-    // The private accessor for JwtService.getPrivateKey() that generateToken uses
-    private PrivateKey getPrivateKey() {
-        return privateKey; 
-    }
-
-     public String generateToken(UserDetails userDetails) {
+    public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
 
         if (userDetails instanceof UserPrincipal principal) {
@@ -74,6 +58,10 @@ public class JwtService {
 
     public String getKeyId() {
         return keyId;
+    }
+
+    public PublicKey getPublicKey() {
+        return publicKey;
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
@@ -104,11 +92,9 @@ public class JwtService {
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
+                
     }
 
-    // -----------------------
-    // 🔑 Key loading
-    // -----------------------
 
     // @SneakyThrows is generally discouraged, consider throwing checked exceptions or handling
     private PrivateKey loadPrivateKey() throws Exception {

@@ -1,0 +1,49 @@
+# server:
+#   http_listen_port: 3200
+#   grpc_listen_port: 4317
+
+# receivers:
+#   otlp:
+#     protocols:
+#       grpc:
+#       http:
+
+# processors:
+#   batch:
+
+# exporters:
+#   logging:
+#     loglevel: debug
+
+# service:
+#   pipelines:
+#     traces:
+#       receivers: [otlp]
+#       processors: [batch]
+#       exporters: [logging]
+
+# storage:
+#   trace:
+#     backend: local
+#     local:
+#       path: /tmp/tempo
+# Correct tempo-config.yaml
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo/traces
+
+auth_enabled: false
