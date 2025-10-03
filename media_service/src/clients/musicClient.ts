@@ -1,7 +1,7 @@
 // src/clients/musicClient.ts
 
 import axios from "axios";
-import { AggregatedMediaDetail } from "../types/media";
+import { AggregatedMediaDetail, SearchResult } from "../types/media";
 
 const LASTFM_API_KEY = process.env.LASTFM_API_KEY;
 const LASTFM_BASE_URL = "http://ws.audioscrobbler.com/2.0/";
@@ -53,4 +53,38 @@ export async function fetchMusicDetails(
   };
 }
 
-// ... Implement searchTracks/searchAlbums here ...
+export async function searchTracks(query: string): Promise<SearchResult[]> {
+  const response = await musicClient.get("/", {
+    params: {
+      method: "track.search",
+      api_key: LASTFM_API_KEY,
+      track: query,
+      limit: 10,
+      format: "json",
+    },
+  });
+
+  const tracks = response.data.results?.trackmatches?.track;
+
+  if (!tracks || !Array.isArray(tracks)) {
+    return [];
+  }
+
+  return tracks.map((track: any): SearchResult => {
+    // Prioritize mbid if it exists, otherwise create a composite ID.
+    const externalId =
+      track.mbid ||
+      `${track.artist.replace(/\s/g, "_")}_${track.name.replace(/\s/g, "_")}`;
+
+    return {
+      externalId,
+      mediaType: "MUSIC",
+      title: `${track.name} by ${track.artist}`,
+      // Find the 'large' image, or fallback to an empty string.
+      posterUrl:
+        track.image?.find((img: any) => img.size === "large")?.["#text"] || "",
+      // Year is not provided in Last.fm track search results.
+      year: 0,
+    };
+  });
+}

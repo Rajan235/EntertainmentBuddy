@@ -6,6 +6,7 @@ import * as tmdbClient from "../clients/tmdbClient";
 import * as animeClient from "../clients/animeClient";
 import * as bookClient from "../clients/bookClient";
 import * as musicClient from "../clients/musicClient";
+import * as igdbClient from "../clients/igdbClient";
 // ... import other fetch functions
 
 // TTL for cached media data (e.g., 24 hours)
@@ -32,8 +33,10 @@ export async function getAggregatedDetails(
   try {
     switch (mediaType) {
       case "MOVIE":
-      case "SERIES":
         cleanAggregatedData = await tmdbClient.fetchMovieDetails(id);
+        break;
+      case "SERIES":
+        cleanAggregatedData = await tmdbClient.fetchSeriesDetails(id);
         break;
       case "ANIME":
         cleanAggregatedData = await animeClient.fetchAnimeDetails(id);
@@ -48,6 +51,9 @@ export async function getAggregatedDetails(
           track,
           artist
         );
+        break;
+      case "GAME":
+        cleanAggregatedData = await igdbClient.fetchGameDetails(id);
         break;
       default:
         throw new Error(`Unsupported media type: ${mediaType}`);
@@ -67,8 +73,28 @@ export async function getAggregatedDetails(
   return cleanAggregatedData;
 }
 
-export async function searchMedia(query: string): Promise<SearchResult[]> {
+export async function searchMedia(
+  mediaType: MediaType,
+  query: string
+): Promise<SearchResult[]> {
   // Note: Search results should have a much shorter TTL (e.g., 5-30 mins)
   // Complex search logic involving parallel calls to multiple clients goes here.
-  return [];
+  // For now, we'll delegate to the appropriate client. Caching search results can be added later.
+
+  switch (mediaType) {
+    case "MOVIE":
+      return await tmdbClient.searchMovies(query);
+    case "SERIES":
+      return await tmdbClient.searchSeries(query);
+    case "ANIME":
+      return await animeClient.searchAnime(query);
+    case "BOOK":
+      return await bookClient.searchBooks(query);
+    case "MUSIC":
+      return await musicClient.searchTracks(query);
+    case "GAME":
+      return await igdbClient.searchGames(query);
+    default:
+      return [];
+  }
 }

@@ -22,4 +22,4 @@ router.get("/health", (req: Request, res: Response) => {
 });
 // If the route in the app.js is app.use('/api', router), then this route becomes /api/health
 
-export default router;
+export { router as mediaRoutes };

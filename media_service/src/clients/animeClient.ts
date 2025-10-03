@@ -1,7 +1,7 @@
 // src/clients/animeClient.ts
 
 import axios from "axios";
-import { AggregatedMediaDetail } from "../types/media";
+import { AggregatedMediaDetail, SearchResult } from "../types/media";
 
 const ANIME_BASE_URL = "https://api.jikan.moe/v4"; // Example: Jikan (MyAnimeList unofficial API)
 
@@ -16,6 +16,7 @@ export async function fetchAnimeDetails(
   return {
     externalId: anime.mal_id.toString(),
     mediaType: "ANIME",
+
     title: anime.title_english || anime.title,
     description: anime.synopsis,
     releaseDate: anime.aired.from,
@@ -26,4 +27,28 @@ export async function fetchAnimeDetails(
     genres: anime.genres.map((g: any) => g.name),
   };
 }
-// ... Add searchAnime here
+
+//need to reviw this function
+
+export async function searchAnime(query: string): Promise<SearchResult[]> {
+  const { data } = await animeClient.get("/anime", {
+    params: {
+      q: query,
+      limit: 10, // Limit results to a reasonable number
+    },
+  });
+
+  if (!data.data) {
+    return [];
+  }
+
+  return data.data.map(
+    (anime: any): SearchResult => ({
+      externalId: anime.mal_id.toString(),
+      mediaType: "ANIME",
+      title: anime.title_english || anime.title,
+      posterUrl: anime.images?.jpg?.image_url || "",
+      year: anime.year,
+    })
+  );
+}

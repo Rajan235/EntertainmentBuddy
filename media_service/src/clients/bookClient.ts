@@ -1,7 +1,7 @@
 // src/clients/bookClient.ts
 
 import axios from "axios";
-import { AggregatedMediaDetail } from "../types/media";
+import { AggregatedMediaDetail, SearchResult } from "../types/media";
 
 const OPEN_LIBRARY_BASE_URL = "https://openlibrary.org";
 
@@ -32,7 +32,7 @@ export async function fetchBookDetails(
         ? data.description
         : data.description?.value || "No detailed description available.",
     releaseDate: data.created?.value || "Unknown Date", // Using creation date as proxy for first release
-    posterUrl: `https://covers.openlibrary.org/b/olid/${id}-L.jpg`, // Covers are inferred by ID
+    posterUrl: `https://covers.openlibrary.org/b/id/${id}-L.jpg`, // Covers are inferred by ID
     trailerUrl: undefined,
     runtime: undefined,
     status: "Completed", // Books are generally considered "Completed" works
@@ -40,4 +40,29 @@ export async function fetchBookDetails(
   };
 }
 
-// ... Implement searchBooks here ...
+export async function searchBooks(query: string): Promise<SearchResult[]> {
+  const { data } = await bookClient.get("/search.json", {
+    params: {
+      q: query,
+      limit: 10,
+    },
+  });
+
+  if (!data.docs) {
+    return [];
+  }
+
+  return data.docs
+    .filter((book: any) => book.cover_i) // Ensure the book has a cover image
+    .map(
+      (book: any): SearchResult => ({
+        // The key is often like "/works/OL...W", we extract the ID part.
+        externalId: book.key.split("/").pop(),
+        mediaType: "BOOK",
+        title: book.title,
+        // Use the cover_i for the poster URL from search results
+        posterUrl: `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`,
+        year: book.first_publish_year,
+      })
+    );
+}
