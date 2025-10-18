@@ -100,6 +100,13 @@
 <artifactId>jjwt-jackson</artifactId>
 <version>0.11.5</version>
 </dependency>
+<!-- https://mvnrepository.com/artifact/io.micrometer/micrometer-registry-prometheus -->
+<dependency>
+    <groupId>io.micrometer</groupId>
+    <artifactId>micrometer-registry-prometheus</artifactId>
+	<scope>runtime</scope>
+    <version>1.15.2</version>
+</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
