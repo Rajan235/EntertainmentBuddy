@@ -1,4 +1,4 @@
-# version: "3.8"
+version: "3.8"
 
 x-logging: &default-logging
   driver: "json-file"
@@ -29,10 +29,27 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+      - "9464:9464" # Prometheus metrics port
     depends_on:
       - postgres
     env_file:
       - ./.env
+    environment:
+      # --- Java Agent Attachment ---
+      - JAVA_TOOL_OPTIONS=-javaagent:/app/opentelemetry-javaagent.jar
+      # --- OpenTelemetry Agent Configuration ---
+      - OTEL_SERVICE_NAME=auth-service
+      - OTEL_RESOURCE_ATTRIBUTES=service.namespace=watchbuddy,deployment.environment=dev
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_EXPORTER_PROMETHEUS_PORT=9464
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://loki:4317
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://tempo:4317
+      # --- Spring Datasource Configuration ---
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth_db
+      - SPRING_DATASOURCE_USERNAME=auth_user
+      - SPRING_DATASOURCE_PASSWORD=auth_pass
     logging:
       <<: *default-logging
 
@@ -42,21 +59,34 @@ services:
     container_name: watchbuddy-loki
     ports:
       - "3100:3100"
+      - "4317:4317" # OTLP gRPC
+    volumes:
+      - ./loki-config/local-config.yaml:/etc/loki/local-config.yaml
     command: -config.file=/etc/loki/local-config.yaml
     restart: unless-stopped
 
-  promtail:
-    image: grafana/promtail:2.9.4
-    container_name: watchbuddy-promtail
+  # promtail:
+  #   image: grafana/promtail:2.9.4
+  #   container_name: watchbuddy-promtail
+  #   volumes:
+  #     # You will need to create these config files in your root directory.
+  #     - ./promtail-config/promtail-config.yaml:/etc/promtail/promtail-config.yaml
+  #     - /var/lib/docker/containers:/var/lib/docker/containers:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   command: -config.file=/etc/promtail/promtail-config.yaml
+  #   depends_on:
+  #     - loki
+  #   restart: unless-stopped
+  # Prometheus for Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
     volumes:
-      # You will need to create these config files in your root directory.
-      - ./promtail-config/promtail-config.yaml:/etc/promtail/promtail-config.yaml
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: -config.file=/etc/promtail/promtail-config.yaml
-    depends_on:
-      - loki
-    restart: unless-stopped
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
 
   grafana:
     image: grafana/grafana:10.2.3
@@ -67,6 +97,8 @@ services:
       - loki
       - tempo
     environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       # Mounts the datasources and dashboards for provisioning
