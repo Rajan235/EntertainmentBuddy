@@ -1,123 +1,126 @@
 version: "3.8"
 
-x-logging: &default-logging
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "3"
-
 services:
-  # --- Database ---
-  postgres:
-    image: postgres:15 # Pinned to a specific major version for stability.
-    container_name: watchbuddy-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: auth_db
-      POSTGRES_USER: auth_user
-      POSTGRES_PASSWORD: auth_pass
+  # ==========================================
+  # 1. INFRASTRUCTURE (Databases)
+  # ==========================================
+
+  # Redis for Media Service Caching
+  redis:
+    image: redis:alpine
+    container_name: empire_redis
     ports:
-      - "5432:5432"
+      - "6379:6379"
+    networks:
+      - empire_network
+
+  # Postgres for Auth & Tracking Services
+  postgres:
+    image: postgres:15-alpine
+    container_name: empire_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      # We create two DBs: one for auth, one for tracking
+      # This init script trick creates multiple DBs on startup
+      POSTGRES_DB: auth_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Mount a script to create the second DB (tracking_db)
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    ports:
+      - "5432:5432" # Host:Container
+    networks:
+      - empire_network
 
-  # --- Java Auth Service ---
+  # ==========================================
+  # 2. BACKEND MICROSERVICES
+  # ==========================================
+
+  # Node.js Media Service
+  media-service:
+    build: ./media-service # Path to your Node.js code
+    container_name: media_service
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - REDIS_URL=redis://redis:6379 # Points to service name 'redis'
+      # API Keys (Ideally load these from a .env file using ${VAR} syntax)
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - GOOGLE_BOOKS_API_KEY=${GOOGLE_BOOKS_API_KEY}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - IGDB_CLIENT_ID=${IGDB_CLIENT_ID}
+      - IGDB_CLIENT_SECRET=${IGDB_CLIENT_SECRET}
+    depends_on:
+      - redis
+    networks:
+      - empire_network
+
+  # Spring Boot Auth Service
   auth-service:
-    # This tells Docker Compose to use the image that was built by Jib.
-    image: auth-service:latest
-    container_name: watchbuddy-auth-service
-    restart: unless-stopped
+    build: ./auth-service # Path to your Spring Boot code
+    container_name: auth_service
     ports:
       - "8080:8080"
-      - "9464:9464" # Prometheus metrics port
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=password
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
     depends_on:
       - postgres
-    env_file:
-      - ./.env
+    networks:
+      - empire_network
+
+  # Spring Boot Tracking Service
+  tracking-service:
+    build: ./tracking-service # Path to your Spring Boot code
+    container_name: tracking_service
+    ports:
+      - "8081:8081"
     environment:
-      # --- Java Agent Attachment ---
-      - JAVA_TOOL_OPTIONS=-javaagent:/app/opentelemetry-javaagent.jar
-      # --- OpenTelemetry Agent Configuration ---
-      - OTEL_SERVICE_NAME=auth-service
-      - OTEL_RESOURCE_ATTRIBUTES=service.namespace=watchbuddy,deployment.environment=dev
-      - OTEL_METRICS_EXPORTER=prometheus
-      - OTEL_EXPORTER_PROMETHEUS_PORT=9464
-      - OTEL_LOGS_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://loki:4317
-      - OTEL_TRACES_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://tempo:4317
-      # --- Spring Datasource Configuration ---
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth_db
-      - SPRING_DATASOURCE_USERNAME=auth_user
-      - SPRING_DATASOURCE_PASSWORD=auth_pass
-    logging:
-      <<: *default-logging
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/tracking_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=password
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    depends_on:
+      - postgres
+      - auth-service
+    networks:
+      - empire_network
 
-  # --- Observability Stack ---
-  loki:
-    image: grafana/loki:2.9.4
-    container_name: watchbuddy-loki
-    ports:
-      - "3100:3100"
-      - "4317:4317" # OTLP gRPC
-    volumes:
-      - ./loki-config/local-config.yaml:/etc/loki/local-config.yaml
-    command: -config.file=/etc/loki/local-config.yaml
-    restart: unless-stopped
+  # ==========================================
+  # 3. FRONTEND (BFF)
+  # ==========================================
 
-  # promtail:
-  #   image: grafana/promtail:2.9.4
-  #   container_name: watchbuddy-promtail
-  #   volumes:
-  #     # You will need to create these config files in your root directory.
-  #     - ./promtail-config/promtail-config.yaml:/etc/promtail/promtail-config.yaml
-  #     - /var/lib/docker/containers:/var/lib/docker/containers:ro
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #   command: -config.file=/etc/promtail/promtail-config.yaml
-  #   depends_on:
-  #     - loki
-  #   restart: unless-stopped
-  # Prometheus for Metrics
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-
-  grafana:
-    image: grafana/grafana:10.2.3
-    container_name: watchbuddy-grafana
+  client:
+    build: ./client # Path to your Next.js code
+    container_name: nextjs_client
     ports:
       - "3000:3000"
-    depends_on:
-      - loki
-      - tempo
     environment:
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      # Mounts the datasources and dashboards for provisioning
-      - ./grafana-config/provisioning/datasources:/etc/grafana/provisioning/datasources
-      - ./grafana-config/provisioning/dashboards:/etc/grafana/provisioning/dashboards
-    restart: unless-stopped
+      - NODE_ENV=production
+      # Internal Docker URLs (Service to Service)
+      - AUTH_SERVICE_URL=http://auth-service:8080
+      - MEDIA_SERVICE_URL=http://media-service:4000
+      - TRACKING_SERVICE_URL=http://tracking-service:8081
+      # Security
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    depends_on:
+      - auth-service
+      - media-service
+      - tracking-service
+    networks:
+      - empire_network
 
-  tempo:
-    image: grafana/tempo:2.4.1
-    container_name: watchbuddy-tempo
-    restart: unless-stopped
-    ports:
-      - "3200:3200" # HTTP (query/api)
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP (optional if using HTTP)
-    volumes:
-      # You will need to create these config files in your root directory.
-      - ./tempo-config/tempo-config.yaml:/etc/tempo.yaml
-    command: ["-config.file=/etc/tempo.yaml"]
-
+# ==========================================
+# 4. VOLUMES & NETWORKS
+# ==========================================
 volumes:
-  postgres_data: {}
+  postgres_data: # Persist DB data even if you delete containers
+
+networks:
+  empire_network:
+    driver: bridge

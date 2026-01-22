@@ -1,16 +1,7 @@
-// src/controllers/mediaController.ts
-
 import { Request, Response, NextFunction } from "express";
 import * as mediaService from "../services/mediaService";
-import { MediaType, SearchResult } from "../types/media";
-
-// A custom error for when media is not found. This is better than generic Errors.
-class MediaNotFoundError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "MediaNotFoundError";
-  }
-}
+import { MediaType } from "../types/media";
+import { MediaNotFoundError } from "../errors/error"; // Import from shared file
 
 const VALID_MEDIA_TYPES: MediaType[] = [
   "MOVIE",
@@ -20,105 +11,92 @@ const VALID_MEDIA_TYPES: MediaType[] = [
   "BOOK",
   "MUSIC",
 ];
+
+// Helper to check validity
 const isValidMediaType = (type: string): type is MediaType =>
   (VALID_MEDIA_TYPES as string[]).includes(type);
 
 /**
- * Middleware to validate the 'type' query parameter.
- * This avoids code duplication in controllers.
+ * 1. GET DETAILS (Strict)
+ * Must provide ID and TYPE.
+ * Usage: /api/media/details?type=MOVIE&id=123
  */
-export const validateMediaType = (
+export const getMediaDetails = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
-  const { type } = req.query;
-  if (!type) {
-    return res.status(400).json({ message: "Missing type query parameter." });
+  const { type, id } = req.query;
+
+  // Validation
+  if (!id || !type) {
+    return res
+      .status(400)
+      .json({ message: "Missing 'id' or 'type' query parameter." });
   }
 
   const mediaTypeStr = type.toString().toUpperCase();
   if (!isValidMediaType(mediaTypeStr)) {
-    return res.status(400).json({
-      message: `Invalid media type: ${mediaTypeStr}. Must be one of: ${VALID_MEDIA_TYPES.join(
-        ", "
-      )}`,
-    });
+    return res
+      .status(400)
+      .json({ message: `Invalid media type: ${mediaTypeStr}` });
   }
-  next();
-};
-
-export const getMediaDetails = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  const { type, id } = req.query;
-
-  if (!id) {
-    res.status(400).json({ message: "Missing id query parameter." });
-    return;
-  }
-
-  const mediaType = type!.toString().toUpperCase() as MediaType;
-  const externalId = id.toString();
 
   try {
     const details = await mediaService.getAggregatedDetails(
-      mediaType,
-      externalId
+      mediaTypeStr,
+      id.toString(),
     );
-    res.status(200).json(details);
+    return res.status(200).json(details);
   } catch (error) {
-    // Map custom, expected service errors (404)
     if (error instanceof MediaNotFoundError) {
-      res.status(404).json({ message: error.message });
+      return res.status(404).json({ message: error.message });
     }
-    // Catch all other unexpected errors (API failures, Redis issues, 500)
-    else {
-      const err = error as Error;
-      console.error(
-        `Error aggregating media details for ${mediaType}:${externalId}:`,
-        err.message
-      );
-      res.status(500).json({
-        message: "Internal server error: Data aggregation failed.",
-      });
-    }
+    next(error); // Pass to global error handler
   }
 };
+
+/**
+ * 2. UNIFIED SEARCH (Flexible)
+ * If 'type' is missing, it searches EVERYTHING.
+ * Usage: /api/media/search?q=Harry Potter (Returns mixed results)
+ * Usage: /api/media/search?q=Harry Potter&type=BOOK (Returns only books)
+ */
 export const searchMediaController = async (
   req: Request,
   res: Response,
-  next: NextFunction
-): Promise<void> => {
-  const { query, type } = req.query;
-  if (!query) {
-    res.status(400).json({ message: "Missing 'query' query parameter." });
-    return;
+  next: NextFunction,
+) => {
+  const { q, type } = req.query; // Changed 'query' to 'q' (standard convention)
+
+  if (!q) {
+    return res.status(400).json({ message: "Missing 'q' search parameter." });
   }
 
-  const mediaType = type!.toString().toUpperCase() as MediaType;
-  const searchQuery = query.toString();
+  const searchQuery = q.toString();
+
+  // Logic: Did the user ask for a specific type?
+  const requestedType = type ? type.toString().toUpperCase() : null;
 
   try {
-    const results: SearchResult[] = await mediaService.searchMedia(
-      mediaType,
-      searchQuery
-    );
-    res.status(200).json(results);
-  } catch (error) {
-    if (error instanceof MediaNotFoundError) {
-      res.status(404).json({ message: error.message });
+    let results;
+
+    if (requestedType) {
+      // Specific Search (e.g., just Movies)
+      if (!isValidMediaType(requestedType)) {
+        return res
+          .status(400)
+          .json({ message: `Invalid media type: ${requestedType}` });
+      }
+      results = await mediaService.searchMedia(requestedType, searchQuery);
     } else {
-      const err = error as Error;
-      console.error(
-        `Error searching media for ${mediaType} with query "${searchQuery}":`,
-        err.message
-      );
-      res.status(500).json({
-        message: "Internal server error: Search operation failed.",
-      });
+      // Unified Search (The "Traffic Cop" Mode)
+      // This calls the service which runs ALL clients in parallel
+      results = await mediaService.searchAllCategories(searchQuery);
     }
+
+    return res.status(200).json(results);
+  } catch (error) {
+    next(error);
   }
 };

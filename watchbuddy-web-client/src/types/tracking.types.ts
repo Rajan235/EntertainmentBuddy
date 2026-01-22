@@ -2,22 +2,24 @@
  * Enum for the different categories of media that can be tracked.
  */
 export enum Category {
-  MOVIE = "Movie",
-  SERIES = "Series",
-  ANIME = "Anime",
-  GAME = "Game",
-  BOOK = "Book",
+  // Key = Value (Must match Backend Enums)
+  MOVIE = "MOVIE",
+  SERIES = "SERIES",
+  ANIME = "ANIME",
+  GAME = "GAME",
+  BOOK = "BOOK",
+  MUSIC = "MUSIC", // Don't forget Music!
 }
 
 /**
  * Enum for the different progress statuses of a tracked media item.
  */
 export enum ProgressStatus {
-  PLANNING = "Planning",
-  IN_PROGRESS = "In Progress",
-  COMPLETED = "Completed",
-  DROPPED = "Dropped",
-  ON_HOLD = "On Hold",
+  PLANNING = "PLANNING",
+  IN_PROGRESS = "IN_PROGRESS",
+  COMPLETED = "COMPLETED",
+  DROPPED = "DROPPED",
+  ON_HOLD = "ON_HOLD",
 }
 
 /**
@@ -37,7 +39,8 @@ export interface TrackingEntry {
 
   // Fields specific to games
   hoursPlayed?: number;
-
+  // 👇 ADD THESE TWO FIELDS
+  genres: string[]; // e.g. ["Action", "Sci-Fi"]
   // Timestamps
   addedAt?: string;
   updatedAt?: string;

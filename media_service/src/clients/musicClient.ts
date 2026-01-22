@@ -1,90 +1,174 @@
-// src/clients/musicClient.ts
-
 import axios from "axios";
 import { AggregatedMediaDetail, SearchResult } from "../types/media";
 
-const LASTFM_API_KEY = process.env.LASTFM_API_KEY;
-const LASTFM_BASE_URL = "http://ws.audioscrobbler.com/2.0/";
+const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
+const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
+const SPOTIFY_AUTH_URL = "https://accounts.spotify.com/api/token";
+const SPOTIFY_BASE_URL = "https://api.spotify.com/v1";
 
-const musicClient = axios.create({
-  baseURL: LASTFM_BASE_URL,
-});
+// --- 1. Strong Types for Spotify ---
 
-export async function fetchMusicDetails(
-  trackName: string,
-  artistName: string
-): Promise<AggregatedMediaDetail> {
-  // Last.fm typically uses composite IDs (Artist + Track Name)
-  // You would pass the standardized title and artist name here.
+interface SpotifyImage {
+  url: string;
+  height: number;
+  width: number;
+}
 
-  const response = await musicClient.get("/", {
-    params: {
-      method: "track.getInfo",
-      api_key: LASTFM_API_KEY,
-      artist: artistName,
-      track: trackName,
-      format: "json",
-    },
-  });
+interface SpotifyArtist {
+  name: string;
+}
 
-  const data = response.data.track;
+interface SpotifyAlbum {
+  name: string;
+  release_date: string; // "2023-01-01"
+  images: SpotifyImage[];
+}
 
-  // Last.fm does not provide a single stable ID easily for track.getInfo,
-  // so we create a composite ID for internal use (or rely on persistent DB for stability)
-  const compositeId = `${data.artist.name.replace(
-    /\s/g,
-    "_"
-  )}_${data.name.replace(/\s/g, "_")}`;
+interface SpotifyTrackRaw {
+  id: string;
+  name: string;
+  artists: SpotifyArtist[];
+  album: SpotifyAlbum;
+  duration_ms: number;
+  popularity: number;
+  preview_url: string | null; // 30s audio clip
+}
 
-  return {
-    externalId: compositeId,
-    mediaType: "MUSIC",
-    title: data.name,
-    description: data.wiki?.content || `Track by ${data.artist.name}`,
-    releaseDate: data.wiki?.published || "Unknown Date",
-    // Last.fm provides images for albums, so getting a track image is tricky; using placeholder:
-    posterUrl:
-      data.album?.image.find((img: any) => img.size === "large")?.["#text"] ||
-      "",
-    trailerUrl: undefined,
-    runtime: parseInt(data.duration) / 1000, // Duration is in milliseconds
-    status: "Released",
-    genres: data.toptags.tag.map((t: any) => t.name),
+interface SpotifySearchResponse {
+  tracks: {
+    items: SpotifyTrackRaw[];
   };
 }
 
-export async function searchTracks(query: string): Promise<SearchResult[]> {
-  const response = await musicClient.get("/", {
-    params: {
-      method: "track.search",
-      api_key: LASTFM_API_KEY,
-      track: query,
-      limit: 10,
-      format: "json",
-    },
-  });
+interface SpotifyToken {
+  access_token: string;
+  expires_at: number;
+}
 
-  const tracks = response.data.results?.trackmatches?.track;
+// --- 2. Robust Auth (Singleton Pattern - Reused from IGDB) ---
 
-  if (!tracks || !Array.isArray(tracks)) {
-    return [];
+let tokenCache: SpotifyToken | null = null;
+let tokenRefreshPromise: Promise<string> | null = null;
+
+async function getSpotifyToken(): Promise<string> {
+  if (tokenCache && tokenCache.expires_at > Date.now()) {
+    return tokenCache.access_token;
   }
 
-  return tracks.map((track: any): SearchResult => {
-    // Prioritize mbid if it exists, otherwise create a composite ID.
-    const externalId =
-      track.mbid ||
-      `${track.artist.replace(/\s/g, "_")}_${track.name.replace(/\s/g, "_")}`;
+  if (tokenRefreshPromise) return tokenRefreshPromise;
+
+  if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
+    throw new Error("Spotify Client ID or Secret is not configured.");
+  }
+
+  tokenRefreshPromise = (async () => {
+    try {
+      // Spotify requires Basic Auth (Base64 encoded ID:Secret)
+      const authHeader = Buffer.from(
+        `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`,
+      ).toString("base64");
+
+      const params = new URLSearchParams();
+      params.append("grant_type", "client_credentials");
+
+      const response = await axios.post(SPOTIFY_AUTH_URL, params, {
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+
+      const { access_token, expires_in } = response.data;
+      tokenCache = {
+        access_token,
+        expires_at: Date.now() + (expires_in - 60) * 1000,
+      };
+      return access_token;
+    } catch (error) {
+      console.error("❌ Spotify Auth Failed:", error);
+      throw error;
+    } finally {
+      tokenRefreshPromise = null;
+    }
+  })();
+
+  return tokenRefreshPromise;
+}
+
+// --- 3. The Client ---
+
+const musicClient = axios.create({ baseURL: SPOTIFY_BASE_URL });
+
+musicClient.interceptors.request.use(async (config) => {
+  const token = await getSpotifyToken();
+  config.headers["Authorization"] = `Bearer ${token}`;
+  return config;
+});
+
+// --- 4. Service Functions ---
+
+export async function searchTracks(query: string): Promise<SearchResult[]> {
+  const cleanQuery = query.trim();
+  if (!cleanQuery) return [];
+
+  try {
+    const { data } = await musicClient.get<SpotifySearchResponse>("/search", {
+      params: {
+        q: cleanQuery,
+        type: "track",
+        limit: 10,
+      },
+    });
+
+    return data.tracks.items.map((track) => ({
+      externalId: track.id,
+      mediaType: "MUSIC",
+      // Title format: "Song Name - Artist Name"
+      title: `${track.name} - ${track.artists[0].name}`,
+
+      posterUrl: track.album.images[0]?.url || "",
+
+      // Robust Year Extraction
+      year: track.album.release_date
+        ? parseInt(track.album.release_date.split("-")[0])
+        : 0,
+
+      status: track.artists[0].name, // Show Artist in status field
+    }));
+  } catch (error) {
+    console.error("❌ Spotify Search Error:", error);
+    return [];
+  }
+}
+
+export async function fetchMusicDetails(
+  id: string,
+): Promise<AggregatedMediaDetail> {
+  try {
+    const { data } = await musicClient.get<SpotifyTrackRaw>(`/tracks/${id}`);
 
     return {
-      externalId,
+      externalId: data.id,
       mediaType: "MUSIC",
-      title: `${track.name} by ${track.artist}`,
-      // Find the 'large' image, or fallback to an empty string.
-      posterUrl:
-        track.image?.find((img: any) => img.size === "large")?.["#text"] || "",
-      // Year is not provided in Last.fm track search results.
-      year: 0,
+      title: data.name,
+      description: `Track by ${data.artists.map((a) => a.name).join(", ")} from the album "${data.album.name}".`,
+
+      releaseDate: data.album.release_date || "Unknown",
+
+      posterUrl: data.album.images[0]?.url || "",
+
+      // Feature: Spotify gives 30s audio previews!
+      trailerUrl: data.preview_url,
+
+      runtime: Math.round(data.duration_ms / 1000), // Convert ms to seconds
+
+      status: "Released",
+      genres: [], // Spotify tracks don't have genres, Artists do. Keeping empty for speed.
+
+      rating: data.popularity / 10, // Convert 0-100 to 0-10
     };
-  });
+  } catch (error) {
+    console.error(`❌ Spotify Detail Error ${id}:`, error);
+    throw new Error("Track not found");
+  }
 }

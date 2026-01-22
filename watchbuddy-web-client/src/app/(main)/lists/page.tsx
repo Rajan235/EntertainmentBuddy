@@ -23,9 +23,14 @@ export default function ListsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { allEntries, isLoading } = useTracking();
+  const [genreFilter, setGenreFilter] = useState<string | "ALL">("ALL");
+  const [ratingFilter, setRatingFilter] = useState<number | "ALL">("ALL");
 
   const filteredEntries = useMemo(() => {
+    if (!allEntries) return [];
+
     return allEntries.filter((entry) => {
+      // ... existing checks (search, category, status)
       const searchMatch =
         debouncedSearchTerm === "" ||
         entry.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
@@ -33,12 +38,86 @@ export default function ListsPage() {
         categoryFilter === "ALL" || entry.category === categoryFilter;
       const statusMatch =
         statusFilter === "ALL" || entry.status === statusFilter;
-      return searchMatch && categoryMatch && statusMatch;
-    });
-  }, [allEntries, debouncedSearchTerm, categoryFilter, statusFilter]);
 
+      // 👇 Genre Logic: Check if the entry's genre list includes the selected genre
+      // We use safe navigation (entry.genres?) in case some old data doesn't have genres yet.
+      const genreMatch =
+        genreFilter === "ALL" ||
+        (entry.genres && entry.genres.includes(genreFilter));
+
+      // 👇 Rating Logic: Check if entry rating is greater than or equal to filter
+      const ratingMatch =
+        ratingFilter === "ALL" ||
+        (entry.rating !== undefined && entry.rating >= ratingFilter);
+
+      return (
+        searchMatch && categoryMatch && statusMatch && genreMatch && ratingMatch
+      );
+    });
+  }, [
+    allEntries,
+    debouncedSearchTerm,
+    categoryFilter,
+    statusFilter,
+    genreFilter,
+    ratingFilter,
+  ]); // 👈 Add new dependencies!
+
+  // 3. 🆕 Update Clear Logic
+  const handleClearFilters = () => {
+    setCategoryFilter("ALL");
+    setStatusFilter("ALL");
+    setGenreFilter("ALL"); // Reset Genre
+    setRatingFilter("ALL"); // Reset Rating
+    setSearchTerm("");
+  };
+
+  // return (
+  //   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  //     <ListsHeader />
+
+  //     <ListsControls
+  //       viewMode={viewMode}
+  //       onViewModeChange={setViewMode}
+  //       onShowFilters={() => setShowFilters(true)}
+  //       searchTerm={searchTerm}
+  //       onSearchChange={setSearchTerm}
+  //     />
+
+  //     <FilterBar
+  //       categoryFilter={categoryFilter}
+  //       statusFilter={statusFilter}
+  //       onCategoryFilterChange={setCategoryFilter}
+  //       onStatusFilterChange={setStatusFilter}
+  //     />
+
+  //     <div className="flex gap-6">
+  //       {/* Filters Sidebar - Desktop */}
+  //       <aside className="hidden lg:block w-64 flex-shrink-0">
+  //         <FilterSidebar />
+  //       </aside>
+
+  //       {/* Content */}
+  //       <div className="flex-1 min-w-0">
+  //         {viewMode === "grid" ? (
+  //           <MediaGridView entries={filteredEntries} isLoading={isLoading} />
+  //         ) : (
+  //           <div className="space-y-4">
+  //             {/* List view implementation */}
+  //             <p className="text-muted-foreground">List view coming soon...</p>
+  //           </div>
+  //         )}
+
+  //         {!isLoading && filteredEntries.length === 0 && <NoResults />}
+  //       </div>
+  //     </div>
+
+  //     {/* Mobile Filters Modal */}
+  //     {showFilters && <MobileFilters onClose={() => setShowFilters(false)} />}
+  //   </div>
+  // );
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <ListsHeader />
 
       <ListsControls
@@ -49,36 +128,58 @@ export default function ListsPage() {
         onSearchChange={setSearchTerm}
       />
 
-      <FilterBar
-        categoryFilter={categoryFilter}
-        statusFilter={statusFilter}
-        onCategoryFilterChange={setCategoryFilter}
-        onStatusFilterChange={setStatusFilter}
-      />
-
-      <div className="flex gap-6">
-        {/* Filters Sidebar - Desktop */}
+      <div className="flex gap-8 mt-8">
+        {/* Desktop Sidebar - Now receives Props! */}
         <aside className="hidden lg:block w-64 flex-shrink-0">
-          <FilterSidebar />
+          <div className="sticky top-24">
+            {" "}
+            {/* Makes sidebar sticky while scrolling */}
+            <FilterSidebar
+              selectedCategory={categoryFilter}
+              selectedStatus={statusFilter}
+              selectedGenre={genreFilter} // 👈
+              selectedRating={ratingFilter} // 👈
+              onCategoryChange={setCategoryFilter}
+              onStatusChange={setStatusFilter}
+              onGenreChange={setGenreFilter} // 👈
+              onRatingChange={setRatingFilter} // 👈
+              onClearFilters={handleClearFilters}
+            />
+          </div>
         </aside>
 
-        {/* Content */}
+        {/* Content Area */}
         <div className="flex-1 min-w-0">
           {viewMode === "grid" ? (
             <MediaGridView entries={filteredEntries} isLoading={isLoading} />
           ) : (
-            <div className="space-y-4">
-              {/* List view implementation */}
+            <div className="p-12 text-center border border-dashed rounded-lg bg-muted/20">
               <p className="text-muted-foreground">List view coming soon...</p>
             </div>
           )}
 
-          {!isLoading && filteredEntries.length === 0 && <NoResults />}
+          {!isLoading && filteredEntries.length === 0 && (
+            <NoResults onClearFilters={handleClearFilters} />
+          )}
         </div>
       </div>
 
-      {/* Mobile Filters Modal */}
-      {showFilters && <MobileFilters onClose={() => setShowFilters(false)} />}
+      {/* Mobile Filters Modal - Connected to State */}
+      {showFilters && (
+        <MobileFilters
+          onClose={() => setShowFilters(false)}
+          // Pass ALL the same props here too
+          selectedCategory={categoryFilter}
+          selectedStatus={statusFilter}
+          selectedGenre={genreFilter}
+          selectedRating={ratingFilter}
+          onCategoryChange={setCategoryFilter}
+          onStatusChange={setStatusFilter}
+          onGenreChange={setGenreFilter}
+          onRatingChange={setRatingFilter}
+          onClearFilters={handleClearFilters}
+        />
+      )}
     </div>
   );
 }

@@ -1,45 +1,63 @@
-import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/server"; // Assuming you have a server-side session utility
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import axios, { AxiosError } from "axios";
+import { AUTH_COOKIE_NAME } from "@/lib/auth/cookies";
 
+const TRACKING_SERVICE_URL = process.env.TRACKING_SERVICE_URL; // e.g., http://localhost:8081
+
+// Helper to get headers
+const getAuthHeaders = async () => {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+  if (!token) throw new Error("Unauthorized");
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+};
+
+// 1. GET: Fetch User's Watchlist
 export async function GET() {
   try {
-    // 1. Authenticate the request from the client
-    const session = await getSession();
-    if (!session?.user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
+    const headers = await getAuthHeaders();
 
-    // 2. Call the downstream tracking microservice
-    // The URL should come from environment variables for security and flexibility.
-    const trackingServiceUrl = `${process.env.TRACKING_SERVICE_URL}/entries`;
-
-    // Using axios for the server-to-server request
-    const trackingServiceResponse = await axios.get(trackingServiceUrl, {
-      headers: {
-        // Forward the user's authentication token to the microservice
-        Authorization: `Bearer ${session.accessToken}`,
-        "Content-Type": "application/json",
-      },
+    // Backend: GET /entries
+    const { data } = await axios.get(`${TRACKING_SERVICE_URL}/entries`, {
+      headers,
     });
-
-    // With axios, the response data is directly on the `data` property
-    return NextResponse.json(trackingServiceResponse.data);
+    return NextResponse.json(data);
   } catch (error) {
-    console.error("[BFF /api/tracking] Error:", error);
+    return handleAxiosError(error);
+  }
+}
 
-    // Axios wraps HTTP errors in a specific object structure.
-    if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      return NextResponse.json(
-        { message: axiosError.response?.data?.message || axiosError.message },
-        { status: axiosError.response?.status || 500 }
-      );
-    }
+// 2. POST: Add/Update Item
+export async function POST(req: NextRequest) {
+  try {
+    const headers = await getAuthHeaders();
+    const body = await req.json();
 
+    // Backend: POST /entries (Body: { mediaId, status, type, ... })
+    const { data } = await axios.post(`${TRACKING_SERVICE_URL}/entries`, body, {
+      headers,
+    });
+    return NextResponse.json(data);
+  } catch (error) {
+    return handleAxiosError(error);
+  }
+}
+
+// Shared Error Handler
+function handleAxiosError(error: any) {
+  if (error.message === "Unauthorized") {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+  console.error("[BFF Tracking] Error:", error);
+  if (axios.isAxiosError(error)) {
     return NextResponse.json(
-      { message: "An internal server error occurred." },
-      { status: 500 }
+      error.response?.data || { message: "Tracking service error" },
+      { status: error.response?.status || 500 },
     );
   }
+  return NextResponse.json({ message: "Internal Error" }, { status: 500 });
 }

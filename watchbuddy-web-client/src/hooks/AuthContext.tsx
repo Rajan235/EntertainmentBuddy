@@ -40,7 +40,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   } = useQuery<User | null, AuthError>({
     queryKey: ["user"],
     queryFn: getSession, // API call to /api/auth/session
-    retry: false, // Don't retry on 401/403 errors
+    //retry: false, // Don't retry on 401/403 errors
+    // 🟢 ADD THIS BLOCK INSTEAD:
+    retry: (failureCount, error) => {
+      // 1. If the server says "Unauthorized" (401), don't retry. The user just isn't logged in.
+      if (error?.status === 401) return false;
+
+      // 2. If it's any other error (like a network blip), retry up to 2 times.
+      return failureCount < 2;
+    },
     refetchOnWindowFocus: false, // Optional: set to true to refetch on focus
   });
 

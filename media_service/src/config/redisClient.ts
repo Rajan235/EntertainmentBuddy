@@ -1,32 +1,42 @@
-// src/config/redisClient.ts
+import { createClient } from "redis";
+import dotenv from "dotenv";
 
-import { createClient, RedisClientType } from "redis";
-import "dotenv/config"; // Ensure environment variables are loaded
+dotenv.config();
 
-// Define the type for the client explicitly
-const redisClient: RedisClientType = createClient({
-  // Use the REDIS_URL environment variable if set, otherwise default to localhost
+// 1. Create the client but DO NOT connect yet
+const redisClient = createClient({
   url: process.env.REDIS_URL || "redis://localhost:6379",
+  socket: {
+    // Reconnect Strategy: Retry every 5 seconds, up to 10 times
+    reconnectStrategy: (retries) => {
+      if (retries > 10) return new Error("Redis connection retries exhausted");
+      return 5000;
+    },
+  },
 });
 
 redisClient.on("error", (err) => {
-  // CRITICAL: Log connection errors without crashing the app
   console.error("⚠️ Redis Client Error:", err);
 });
 
-// Immediately connect the client upon import
-redisClient
-  .connect()
-  .then(() => {
+// 2. Export a startup function
+export const connectRedis = async () => {
+  try {
+    await redisClient.connect();
     console.log("✅ Connected to Redis successfully");
-  })
-  .catch((err) => {
-    // Log a fatal error if the initial connection fails
-    console.error(
-      "❌ FATAL: Redis connection failed on startup. Caching disabled.",
-      err
-    );
-  });
+  } catch (err) {
+    console.error("❌ Redis Connection Failed:", err);
+    // In K8s/Docker, if Redis fails, we often want the container to crash
+    // so the orchestrator can restart it.
+    process.exit(1);
+  }
+};
 
-// Export the connected client instance
+// 3. Export a shutdown function (Critical for Graceful Shutdowns)
+export const disconnectRedis = async () => {
+  await redisClient.quit();
+  console.log("🛑 Redis Client Disconnected");
+};
+
+// 4. Export the client for use in other files
 export default redisClient;

@@ -16,10 +16,11 @@ export interface AggregatedMediaDetail {
   description: string;
   releaseDate: string; // ISO 8601 string
   posterUrl: string;
-  trailerUrl?: string;
+  trailerUrl?: string | null;
   runtime?: number; // Minutes or seconds depending on type
   status: string; // e.g., 'Released', 'Airing', 'Completed'
   genres: string[];
+  rating?: number; // <--- ADDED THIS
 }
 
 export interface SearchResult {
@@ -28,4 +29,5 @@ export interface SearchResult {
   title: string;
   posterUrl: string;
   year: number;
+  status?: string; // Helpful for UI
 }

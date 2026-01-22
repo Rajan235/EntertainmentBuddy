@@ -92,14 +92,14 @@ public class TrackingController {
     }
 
     @GetMapping("/category/{category}/status/{status}")
-@Operation(summary = "Get all tracking entries of a category and status for authenticated user")
-public ResponseEntity<List<TrackingResponseDto>> getByCategoryAndStatus(
+    @Operation(summary = "Get all tracking entries of a category and status for authenticated user")
+    public ResponseEntity<List<TrackingResponseDto>> getByCategoryAndStatus(
         @PathVariable Category category,
         @PathVariable ProgressStatus status) {
-    UUID userId = getCurrentUserId();
-    List<TrackingResponseDto> entries = userProgressService.getByStatus(userId, category, status);
-    return ResponseEntity.ok(entries);
-}
+        UUID userId = getCurrentUserId();
+        List<TrackingResponseDto> entries = userProgressService.getByStatus(userId, category, status);
+        return ResponseEntity.ok(entries);
+    }
     @GetMapping("/status/{status}")
     @Operation(summary = "Get all tracking entries for the authenticated user filtered by status")
     public ResponseEntity<List<TrackingResponseDto>> getEntriesByStatus(@PathVariable ProgressStatus status) {
